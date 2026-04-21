@@ -1,113 +1,91 @@
-# Desafio Técnico - Cientista de Dados Pleno - Squad WhatsApp
+# 🚀 Desafio DS: Inteligência de Escolha WhatsApp (Prefeitura do Rio)
+
+## 🎯 Contexto e Missão
+
+Na Prefeitura do Rio, enviamos milhares de mensagens por mês via WhatsApp. Um desafio crítico é a **Multiplicidade**: um mesmo cidadão possui vários telefones vinculados a ele em diferentes sistemas (Saúde, Educação, IPTU, etc.), muitos dos quais estão desatualizados.
+
+Este projeto implementa a **Inteligência de Escolha**: um algoritmo de priorização para identificar quais fontes de dados são mais confiáveis ("quentes") e escolher automaticamente os **dois melhores números** para garantir a entrega das mensagens com o menor custo.
 
 ---
 
-## Contexto
+## ⚙️ Setup do Ambiente
 
-Na Prefeitura do Rio, enviamos milhares de mensagens por mês via WhatsApp. Cada disparo tem um custo e as janelas de comunicação com o cidadão são preciosas. 
+O projeto utiliza o gerenciador de pacotes `uv` para garantir reprodutibilidade e performance.
 
-O **Registro Municipal Integrado (RMI)** consolida dados de múltiplos sistemas (Saúde, Educação, Assistência Social, IPTU, etc.). Um desafio crítico é a **Multiplicidade**: um mesmo cidadão pode ter vários telefones vinculados a ele, muitas vezes antigos ou desatualizados. 
+### Pré-requisitos
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) instalado
 
-Como Cientista de Dados no Squad WhatsApp, seu objetivo é criar a **Inteligência de Escolha**: identificar quais fontes de dados são mais confiáveis ("quentes") para garantir que mensagens críticas cheguem ao cidadão de forma eficiente e com menor custo.
+### Configuração Inicial
+```bash
+# 1. Criar ambiente virtual e instalar dependências
+uv venv
+uv sync
+
+# 2. Registrar o kernel do Jupyter (necessário para rodar os notebooks)
+uv run python -m ipykernel install --user --name=desafio-whatsapp --display-name "Desafio WhatsApp DS"
+```
 
 ---
 
-## Instruções
-
-1. Faça um fork do repositório do desafio para colocar a sua solução
-2. Use **Jupyter Notebooks** (.ipynb) bem documentados ou scripts Python/SQL
-3. Inclua **README.md** explicando sua abordagem, premissas e como reproduzir
-4. **Entrega**: Envie o link do repositório para `selecao.pcrj@gmail.com`
-
----
-
-## Dados
-
-Você terá acesso a duas tabelas principais mascaradas para garantir anonimato e consistência:
-
-### 1. Tabela de Performance: `base_disparo_mascarado`
-Histórico real de disparos efetuados pelo motor de mensagens.
-
-### 2. Tabela de Dimensão: `dim_telefone_mascarado`
-Conhecimento consolidado sobre os telefones e suas origens.
-
-
-**⚠️ DISCLAIMER SOBRE VIESES**: Algumas bases de dados já são consideradas "mais quentes" pela Prefeitura e aparecem com maior frequência nos logs. Identifique se uma base performa melhor porque é realmente superior ou se os números estão inflados pelo volume de tentativas (viés de seleção).
-
-### Acesso aos dados
-
-Os arquivos Parquet estão disponíveis no bucket GCS:
+## 🗂️ Estrutura do Projeto
 
 ```
-https://console.cloud.google.com/storage/browser/case_vagas/whatsapp
+desafio-whatsapp-ds/
+│
+├── data/                    ← Arquivos .parquet (ver seção de Dados)
+├── notebooks/
+│   ├── 01_eda_qualidade.ipynb    ← Parte 1: EDA e Qualidade das Fontes
+│   ├── 02_priorizacao.ipynb      ← Parte 2: Ranking e Algoritmo de Score
+│   └── 03_experimento_ab.ipynb   ← Parte 3: Desenho do Teste A/B
+│
+├── src/
+│   └── scoring.py           ← Core logic: Algoritmo de Score e Wilson LB
+│
+├── outputs/                 ← Gráficos e tabelas exportados
+├── pyproject.toml           ← Dependências gerenciadas pelo uv
+└── AGENTS.md                ← Instruções de infra e arquitetura
 ```
----
-
-## Parte 1: Análise Exploratória e Qualidade de Fontes
-
-**O objetivo aqui é medir o "calor" de cada sistema de origem.**
-
-### 1. Desestruturação e Correlação
-Um telefone pode ter vindo de vários sistemas. Use seus conhecimentos para correlacionar cada sistema de origem (`id_sistema_mask`) com a performance real nos disparos (`status_disparo`).
-
-**Entregue**: Análise comparativa de taxas de entrega (`DELIVERED`) agregadas por sistema de origem.
-
-### 2. Janela de Atualidade
-Investigue se o tempo decorrido desde a última atualização do telefone no sistema de origem (`registro_data_atualizacao`) impacta na chance de sucesso do disparo.
-
-**Entregue**: Análise de "decaimento" da qualidade do dado ao longo do tempo. Existe um "prazo de validade" para um telefone ser considerado quente?
 
 ---
 
-## Parte 2: Inteligência de Priorização
+## 🧠 Inteligência Implementada
 
-**O objetivo aqui é criar a regra de negócio que o motor de disparos seguirá.**
+O algoritmo de priorização em `src/scoring.py` baseia-se em três pilares fundamentais:
 
-### 3. Ranking de Sistemas
-Com base nas análises anteriores, crie um ranking de confiabilidade para os sistemas da Prefeitura. 
-
-**Entregue**: Tabela ou Score de ranking das fontes. Explique matematicamente por que o sistema X é melhor que o sistema Y.
-
-### 4. Algoritmo de Escolha
-
-Imagine que você tem 3 telefones diferentes para o mesmo CPF. Proponha um algoritmo (score ou ranking) que escolha automaticamente os **dois melhores** para receberem a mensagem.
-
-**Entregue**: Explicação da lógica do algoritmo. Como você combina a "origem do dado" com a "data de atualização" e o "DDD" para tomar essa decisão?
+1.  **Ranking de Fontes (Wilson Lower Bound)**: Utilizamos estatística para rankear os sistemas de origem, penalizando fontes com baixo volume de dados e garantindo que a taxa de entrega seja estatisticamente sólida.
+2.  **Decaimento Temporal (Frescor)**: Aplicamos um decaimento exponencial na pontuação baseado na data da última atualização do telefone. Dados "parados" no sistema perdem valor ao longo do tempo.
+3.  **Localidade (DDD)**: Priorização de DDDs locais (ex: 21 para o Rio de Janeiro) como fator de desempate e afinidade.
 
 ---
 
-## Parte 3: Desenho de Experimento
+## 📥 Dados
 
-### 5. Proposta de Teste A/B
-Como você validaria que seu novo ranking é realmente melhor do que a estratégia de envio aleatório (ou baseada em ordem alfabética) que usamos hoje?
+Os arquivos de dados originais (`.parquet`) devem ser colocados na pasta `data/`. 
 
-**Entregue**: Desenho do experimento. Defina hipótese nula, métricas primárias e secundárias, tamanho de amostra e tempo de duração estimado para o teste.
-
----
-
-## Avaliação
-
-Você será avaliado nos seguintes critérios:
-
-- **Manipulação de Dados (SQL/Python)**: Capacidade de lidar com arrays e joins complexos.
-- **Raciocínio Analítico e Estatístico**: Tratamento de vieses e solidez na definição de métricas.
-- **Visão de Negócio e Impacto**: Tradução da análise em uma regra de negócio acionável.
-- **Comunicação e Visualização**: Clareza na apresentação dos resultados.
+Devido a restrições de acesso, os arquivos devem ser baixados manualmente via Google Cloud Console:
+- **Bucket GCS**: [https://console.cloud.google.com/storage/browser/case_vagas/whatsapp](https://console.cloud.google.com/storage/browser/case_vagas/whatsapp)
+- **Arquivos necessários**:
+  - `base_disparo_mascarado.parquet`
+  - `dim_telefone_mascarado.parquet`
 
 ---
 
-## FAQ
+## 🧪 Como Reproduzir
 
-**1. O que define um telefone "quente"?**
-Aquele que tem maior probabilidade de estar ativo, ser entregue e lido pelo cidadão correto.
-
-**2. Posso usar ferramentas de BI?**
-Sim, mas o core da análise e a lógica do algoritmo devem estar documentados no repositório.
+1.  Siga os passos da **Configuração Inicial**.
+2.  Coloque os arquivos `.parquet` em `data/`.
+3.  Execute os notebooks na ordem numérica (`01 -> 02 -> 03`) utilizando o kernel `Desafio WhatsApp DS`.
+4.  As funções auxiliares e a lógica do score serão carregadas automaticamente de `src/scoring.py`.
 
 ---
 
-## Contato
+## ✅ Checklist de Qualidade
 
-Dúvidas? Mande um e-mail para `patricia.catandi@prefeitura.rio` com o título começando com `[CASE DS]` 
+- [x] Ambiente gerenciado por `uv`.
+- [x] Código em `src/` validado pelo `ruff`.
+- [x] Notebooks estruturados conforme o pipeline de análise.
+- [x] Lógica de negócio isolada em módulos reutilizáveis.
 
-Boa sorte! 🚀
+---
+🚀 *Implementado com foco em dados e impacto de negócio.*
