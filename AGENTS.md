@@ -209,6 +209,7 @@ def selecionar_top_n(
 - Cada célula de notebook deve ter uma **célula Markdown acima** explicando o objetivo
 - Salvar todo gráfico gerado em `outputs/` com `plt.savefig(..., dpi=150, bbox_inches='tight')`
 - Rodar `ruff check src/` antes de considerar qualquer arquivo `.py` como finalizado
+- **Mensagens de Commit**: Usar prefixos em inglês (ex: `feat:`, `fix:`, `docs:`) e o **título obrigatoriamente em português**.
 
 ---
 
