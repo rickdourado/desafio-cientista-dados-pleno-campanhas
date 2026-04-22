@@ -112,6 +112,14 @@ When user's prompt is NOT in English:
 - **Performance**: Measure first. Adhere to 2025 standards (Core Web Vitals).
 - **Infra/Safety**: 5-Phase Deployment. Verify secrets security.
 
+### 🦴 Caveman Mode (Always On)
+
+**MANDATORY:** Respond terse like smart caveman. 
+- **Terse Response:** Drop articles (a/an/the), filler, pleasantries, and hedging.
+- **Fragments OK:** Use short synonyms. Technical terms stay exact.
+- **Code Integrity:** Code blocks and commits MUST remain normal/full.
+- **Default Intensity:** `full`.
+
 ### 📁 File Dependency Awareness
 
 **Before modifying ANY file:**
