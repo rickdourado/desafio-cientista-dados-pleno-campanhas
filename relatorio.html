@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inteligência de Escolha WhatsApp — Relatório Técnico</title>
+  <meta name="description" content="Relatório técnico do desafio de Ciência de Dados da Prefeitura do Rio: algoritmo de priorização de telefones para disparo via WhatsApp." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:         #0d1117;
+      --bg-card:    #161b22;
+      --bg-raised:  #21262d;
+      --border:     #30363d;
+      --text:       #e6edf3;
+      --text-muted: #8b949e;
+      --text-dim:   #6e7681;
+      --accent:     #2ea043;
+      --accent-2:   #1f6feb;
+      --accent-3:   #bc8cff;
+      --gold:       #d29922;
+      --red:        #da3633;
+      --teal:       #2dd4bf;
+      --radius:     12px;
+      --radius-lg:  20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 72px 0 64px;
+      background: linear-gradient(135deg, #0d1117 0%, #0f1923 50%, #0d1117 100%);
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 900px 500px at 20% 50%, rgba(46,160,67,.12) 0%, transparent 70%),
+        radial-gradient(ellipse 700px 400px at 80% 20%, rgba(31,111,235,.10) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 600px at 60% 80%, rgba(188,140,255,.07) 0%, transparent 70%);
+    }
+    .hero-inner {
+      position: relative;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(46,160,67,.15);
+      border: 1px solid rgba(46,160,67,.3);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3fb950;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #3fb950;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(1.4); }
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.02em;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { 
+      background: linear-gradient(90deg, #3fb950, #58a6ff, #bc8cff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 28px;
+    }
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .hero-meta-item svg { opacity: .6; }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    /* ── NAV DOTS ── */
+    .nav-strip {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-strip-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 32px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-strip-inner::-webkit-scrollbar { display: none; }
+    .nav-btn {
+      white-space: nowrap;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-btn:hover { color: var(--text); border-bottom-color: var(--border); }
+
+    /* ── SECTION ── */
+    .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .section-part {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .section-num {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 100px;
+      border: 1px solid currentColor;
+    }
+    .num-green  { color: var(--accent); border-color: rgba(46,160,67,.4); background: rgba(46,160,67,.08); }
+    .num-blue   { color: #58a6ff;        border-color: rgba(88,166,255,.4); background: rgba(88,166,255,.08); }
+    .num-purple { color: var(--accent-3); border-color: rgba(188,140,255,.4); background: rgba(188,140,255,.08); }
+
+    .section h2 {
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: 700;
+      letter-spacing: -.01em;
+      margin-bottom: 12px;
+    }
+    .section-lead {
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .card h3 { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* ── STAT CARDS ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 18px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat.green::before  { background: var(--accent); }
+    .stat.blue::before   { background: #58a6ff; }
+    .stat.purple::before { background: var(--accent-3); }
+    .stat.gold::before   { background: var(--gold); }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      margin-bottom: 4px;
+    }
+    .stat.green  .stat-value { color: #3fb950; }
+    .stat.blue   .stat-value { color: #58a6ff; }
+    .stat.purple .stat-value { color: var(--accent-3); }
+    .stat.gold   .stat-value { color: var(--gold); }
+    .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+    /* ── CODE ── */
+    pre {
+      background: #111827;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #e6edf3;
+      margin: 16px 0;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #79c0ff; }
+    .op  { color: #ff7b72; }
+
+    /* ── FORMULA BOX ── */
+    .formula-box {
+      background: linear-gradient(135deg, rgba(46,160,67,.05), rgba(31,111,235,.05));
+      border: 1px solid rgba(46,160,67,.25);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .formula {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 500;
+      color: #3fb950;
+      letter-spacing: .02em;
+    }
+    .formula-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; margin: 20px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      background: var(--bg-raised);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(48,54,61,.6);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-green  { background: rgba(46,160,67,.15);  color: #3fb950; }
+    .badge-blue   { background: rgba(88,166,255,.15); color: #58a6ff; }
+    .badge-purple { background: rgba(188,140,255,.15); color: #bc8cff; }
+    .badge-gold   { background: rgba(210,153,34,.15);  color: #e3b341; }
+    .badge-red    { background: rgba(218,54,51,.15);   color: #f78166; }
+
+    /* ── WEIGHT VIZ ── */
+    .weight-bar-wrap { margin: 20px 0; }
+    .weight-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .weight-label { width: 180px; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+    .weight-track {
+      flex: 1;
+      height: 10px;
+      background: var(--bg-raised);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .weight-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 1s ease-out;
+    }
+    .weight-pct { font-size: 13px; font-weight: 700; width: 40px; text-align: right; flex-shrink: 0; }
+    .fill-green  { background: linear-gradient(90deg, #2ea043, #3fb950); }
+    .fill-blue   { background: linear-gradient(90deg, #1f6feb, #58a6ff); }
+    .fill-purple { background: linear-gradient(90deg, #8957e5, #bc8cff); }
+
+    /* ── TIMELINE / FLOW ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      margin: 24px 0;
+    }
+    .flow::before {
+      content: '';
+      position: absolute;
+      left: 20px; top: 20px; bottom: 20px;
+      width: 2px;
+      background: var(--border);
+    }
+    .flow-step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 12px 0;
+    }
+    .flow-dot {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .flow-dot.green  { background: rgba(46,160,67,.2);  border: 2px solid var(--accent);  color: #3fb950; }
+    .flow-dot.blue   { background: rgba(31,111,235,.2); border: 2px solid var(--accent-2); color: #58a6ff; }
+    .flow-dot.purple { background: rgba(188,140,255,.2); border: 2px solid var(--accent-3); color: #bc8cff; }
+    .flow-dot.gold   { background: rgba(210,153,34,.2); border: 2px solid var(--gold);     color: var(--gold); }
+    .flow-content { padding-top: 8px; }
+    .flow-content strong { font-weight: 600; display: block; margin-bottom: 4px; }
+    .flow-content p { font-size: 14px; color: var(--text-muted); }
+
+    /* ── CALLOUT ── */
+    .callout {
+      display: flex;
+      gap: 14px;
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-left: 3px solid;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+    .callout.green  { border-left-color: var(--accent); }
+    .callout.blue   { border-left-color: #58a6ff; }
+    .callout.orange { border-left-color: var(--gold); }
+    .callout.purple { border-left-color: var(--accent-3); }
+    .callout-icon { font-size: 18px; flex-shrink: 0; }
+    .callout p    { color: var(--text-muted); line-height: 1.6; }
+    .callout strong { color: var(--text); }
+
+    /* ── AB TEST ── */
+    .ab-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .ab-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+    }
+    .ab-group.control  { border-top: 3px solid var(--text-dim); }
+    .ab-group.treatment { border-top: 3px solid var(--accent); }
+    .ab-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; color: var(--text-muted); }
+    .ab-name  { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .ab-desc  { font-size: 13px; color: var(--text-muted); }
+
+    /* ── HYPOTHESIS ── */
+    .hypothesis-row {
+      display: flex;
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .hypothesis {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .h-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; color: var(--text-muted); }
+    .h-text  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); }
+
+    /* ── CHART IMAGE ── */
+    .chart-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    .chart-wrap img { width: 100%; display: block; }
+    .chart-caption {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-caption strong { color: var(--text-muted); }
+
+    /* ── METRICS TABLE ── */
+    .metric-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(48,54,61,.6);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+    .metric-info { flex: 1; }
+    .metric-name  { font-size: 14px; font-weight: 600; }
+    .metric-desc  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .metric-type  { font-size: 11px; font-weight: 700; }
+
+    /* ── FOOTER ── */
+    .footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+    .footer a { color: var(--text-muted); text-decoration: none; }
+
+    /* ── EVALUATION GRID ── */
+    .eval-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .eval-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .eval-icon { font-size: 24px; margin-bottom: 10px; }
+    .eval-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .eval-text  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 20px; }
+      .hero-inner { padding: 0 20px; }
+      .ab-layout, .hypothesis-row { grid-template-columns: 1fr; flex-direction: column; }
+      pre { font-size: 12px; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ──────────────── HERO ──────────────── -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><span class="dot"></span> Desafio Técnico — Squad WhatsApp</div>
+    <h1>Inteligência de<br /><span>Escolha de Telefones</span></h1>
+    <p style="color:var(--text-muted);font-size:16px;max-width:600px;margin-top:12px;">
+      Algoritmo de priorização de números para disparo via WhatsApp — Prefeitura do Rio de Janeiro · RMI
+    </p>
+    <div class="hero-meta">
+      <span class="hero-meta-item">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>
+        Abril 2026
+      </span>
+      <span class="hero-meta-item">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8Z"/></svg>
+        Python · Jupyter · scipy · pandas
+      </span>
+      <span class="hero-meta-item">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>
+        3 Partes · 5 Pontos · 3 Gráficos
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- ──────────────── NAV ──────────────── -->
+<nav class="nav-strip">
+  <div class="nav-strip-inner">
+    <a href="#visao" class="nav-btn">📋 Visão Geral</a>
+    <a href="#parte1" class="nav-btn">📊 Parte 1 — EDA</a>
+    <a href="#parte2" class="nav-btn">🏆 Parte 2 — Priorização</a>
+    <a href="#parte3" class="nav-btn">🧪 Parte 3 — A/B Test</a>
+    <a href="#avaliacao" class="nav-btn">✅ Avaliação</a>
+  </div>
+</nav>
+
+<!-- ──────────────── VISÃO GERAL ──────────────── -->
+<section class="section" id="visao">
+  <div class="container">
+    <div class="section-label">
+      <span class="section-part">Contexto</span>
+    </div>
+    <h2>Visão Geral do Projeto</h2>
+    <p class="section-lead">
+      O RMI consolida dados de múltiplos sistemas municipais. Um mesmo cidadão pode ter dezenas de telefones vinculados — muitos desatualizados.
+      Este projeto entrega a <strong>Inteligência de Escolha</strong>: um score estatístico que seleciona os <em>dois melhores números</em> para cada disparo.
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat green">
+        <div class="stat-value">2</div>
+        <div class="stat-label">tabelas analisadas</div>
+      </div>
+      <div class="stat blue">
+        <div class="stat-value">3</div>
+        <div class="stat-label">pilares do score</div>
+      </div>
+      <div class="stat purple">
+        <div class="stat-value">Wilson LB</div>
+        <div class="stat-label">métrica de ranking</div>
+      </div>
+      <div class="stat gold">
+        <div class="stat-value">A/B</div>
+        <div class="stat-label">validação proposta</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pipeline da Solução</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-dot green">1</div>
+          <div class="flow-content">
+            <strong>Ingestão e Join</strong>
+            <p>Leitura dos Parquets <code>base_disparo_mascarado</code> + <code>dim_telefone_mascarado</code>. Join pela chave do cidadão/telefone.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot green">2</div>
+          <div class="flow-content">
+            <strong>EDA e Qualidade de Fontes</strong>
+            <p>Taxa de entrega por sistema · Análise de decaimento temporal · Exposição do viés de seleção.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot blue">3</div>
+          <div class="flow-content">
+            <strong>Ranking Estatístico (Wilson LB)</strong>
+            <p>Klassificação dos sistemas por limite inferior do IC de Wilson a 95% — penaliza baixo volume.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot blue">4</div>
+          <div class="flow-content">
+            <strong>Score Composto (0–1)</strong>
+            <p>Combina sistema (50%) + frescor temporal (40%) + DDD preferencial (10%).</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot purple">5</div>
+          <div class="flow-content">
+            <strong>Seleção Top-2 por Cidadão</strong>
+            <p><code>groupby → sort → head(2)</code> — regra de negócio pronta para produção.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-dot gold">6</div>
+          <div class="flow-content">
+            <strong>Desenho do Experimento A/B</strong>
+            <p>H₀, métricas, tamanho de amostra com poder 80%, análise por <code>proportions_ztest</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout orange">
+      <span class="callout-icon">⚠️</span>
+      <p><strong>Viés de Seleção — tratado explicitamente:</strong> sistemas com maior volume de tentativas podem inflar artificialmente sua taxa de entrega. A solução expõe isso com dois gráficos lado a lado (taxa + volume) e usa Wilson LB para correção estatística.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── PARTE 1 ──────────────── -->
+<section class="section" id="parte1">
+  <div class="container">
+    <div class="section-label">
+      <span class="section-num num-green">Parte 1</span>
+      <span class="section-part">Análise Exploratória e Qualidade de Fontes</span>
+    </div>
+    <h2>EDA e Qualidade das Fontes</h2>
+    <p class="section-lead">
+      Objetivo: medir o "calor" de cada sistema de origem correlacionando fonte com performance real de entrega,
+      e investigar se o tempo desde a última atualização impacta a chance de sucesso.
+    </p>
+
+    <!-- PONTO 1 -->
+    <div class="card" id="ponto1">
+      <div class="card-title">Ponto 1 · Desestruturação e Correlação</div>
+      <h3>Taxa de Entrega por Sistema de Origem</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        As tabelas são unidas por join. Uma flag binária <code>entregue</code> é criada
+        (<code>1</code> se <code>status_disparo == 'DELIVERED'</code>, <code>0</code> caso contrário).
+        A análise agrega por <code>id_sistema_mask</code>.
+      </p>
+
+      <pre><span class="cm"># Flag binária de entrega</span>
+df[<span class="str">'entregue'</span>] = (df[<span class="str">'status_disparo'</span>] == <span class="str">'DELIVERED'</span>).astype(<span class="num">int</span>)
+
+<span class="cm"># Agregação por sistema</span>
+taxa_por_sistema = (
+    df.groupby(<span class="str">'id_sistema_mask'</span>)
+    .agg(
+        total_disparos=(<span class="str">'entregue'</span>, <span class="str">'count'</span>),
+        total_entregues=(<span class="str">'entregue'</span>, <span class="str">'sum'</span>)
+    )
+    .assign(taxa_entrega=<span class="kw">lambda</span> x: x[<span class="str">'total_entregues'</span>] / x[<span class="str">'total_disparos'</span>])
+    .sort_values(<span class="str">'taxa_entrega'</span>, ascending=<span class="kw">False</span>)
+)</pre>
+
+      <div class="chart-wrap">
+        <img src="outputs/taxa_entrega_sistema.png" alt="Taxa de Entrega por Sistema de Origem" />
+        <div class="chart-caption">
+          <strong>Fig. 1</strong> — Taxa de entrega (DELIVERED) por sistema de origem. Sistemas mascarados por hash. Somente sistemas com mínimo 100 disparos incluídos.
+        </div>
+      </div>
+
+      <div class="callout blue">
+        <span class="callout-icon">🔍</span>
+        <p><strong>Dois gráficos foram gerados lado a lado</strong> (taxa + volume) para evidenciar o viés de seleção: um sistema pode parecer melhor apenas por ter mais tentativas registradas. Mostrar o volume junto é fundamental para a análise honesta.</p>
+      </div>
+    </div>
+
+    <!-- PONTO 2 -->
+    <div class="card" id="ponto2">
+      <div class="card-title">Ponto 2 · Janela de Atualidade</div>
+      <h3>Decaimento da Qualidade com o Tempo</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        Investigamos se telefones "velhos" entregam menos. Calculada a diferença em dias entre
+        <code>data_disparo</code> e <code>registro_data_atualizacao</code>. Faixa temporal segmentada em 6 bins.
+      </p>
+
+      <pre><span class="cm"># Calcular idade do telefone em dias</span>
+df[<span class="str">'dias_desde_atualizacao'</span>] = (
+    df[<span class="str">'data_disparo'</span>] - df[<span class="str">'registro_data_atualizacao'</span>]
+).dt.days
+
+<span class="cm"># Bins de frescor</span>
+bins   = [<span class="num">0</span>, <span class="num">90</span>, <span class="num">180</span>, <span class="num">365</span>, <span class="num">730</span>, <span class="num">1095</span>, np.inf]
+labels = [<span class="str">'0-3m'</span>, <span class="str">'3-6m'</span>, <span class="str">'6-12m'</span>, <span class="str">'1-2a'</span>, <span class="str">'2-3a'</span>, <span class="str">'>3a'</span>]
+df[<span class="str">'faixa_idade'</span>] = pd.cut(df[<span class="str">'dias_desde_atualizacao'</span>], bins, labels=labels)</pre>
+
+      <div class="chart-wrap">
+        <img src="outputs/decaimento_temporal.png" alt="Decaimento da Qualidade do Dado" />
+        <div class="chart-caption">
+          <strong>Fig. 2</strong> — Taxa de entrega por faixa de tempo desde a última atualização do registro. Evidencia o "prazo de validade" do dado.
+        </div>
+      </div>
+
+      <div class="callout green">
+        <span class="callout-icon">💡</span>
+        <p><strong>Conclusão de negócio:</strong> Fora da faixa 0–3 meses a taxa de entrega cai. O ponto de inflexão mais acentuado define o "prazo de validade" — dado incorporado como meia-vida de <strong>365 dias</strong> no modelo de decaimento exponencial do score.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── PARTE 2 ──────────────── -->
+<section class="section" id="parte2">
+  <div class="container">
+    <div class="section-label">
+      <span class="section-num num-blue">Parte 2</span>
+      <span class="section-part">Inteligência de Priorização</span>
+    </div>
+    <h2>Ranking e Algoritmo de Escolha</h2>
+    <p class="section-lead">
+      Objetivo: traduzir a EDA em uma regra de negócio acionável — um score que o motor de disparos possa aplicar automaticamente.
+    </p>
+
+    <!-- PONTO 3 -->
+    <div class="card" id="ponto3">
+      <div class="card-title">Ponto 3 · Ranking de Sistemas</div>
+      <h3>Wilson Lower Bound — Ranking Estatisticamente Defensável</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        Em vez de usar a taxa simples (entregues / total), a solução usa o <strong>limite inferior do IC de Wilson a 95%</strong>.
+        Esse método penaliza sistemas com poucos disparos, corrigindo o viés de volume.
+      </p>
+
+      <div class="formula-box">
+        <div class="formula">WLB = (p̂ + z²/2n − z√[p̂(1−p̂)/n + z²/4n²]) / (1 + z²/n)</div>
+        <div class="formula-label">onde z = 1.96 (IC 95%) · p̂ = taxa observada · n = total de disparos</div>
+      </div>
+
+      <pre><span class="kw">from</span> scipy <span class="kw">import</span> stats
+
+<span class="kw">def</span> <span class="fn">wilson_lower_bound</span>(positives: <span class="num">int</span>, total: <span class="num">int</span>, confidence: <span class="num">float</span> = <span class="num">0.95</span>) -> <span class="num">float</span>:
+    <span class="cm">"""Limite inferior do IC de Wilson — mais robusto para volumes diferentes."""</span>
+    <span class="kw">if</span> total == <span class="num">0</span>:
+        <span class="kw">return</span> <span class="num">0.0</span>
+    z = stats.norm.ppf(<span class="num">1</span> - (<span class="num">1</span> - confidence) / <span class="num">2</span>)   <span class="cm"># z ≈ 1.96</span>
+    phat = positives / total
+    denominator = <span class="num">1</span> + z**<span class="num">2</span> / total
+    center = phat + z**<span class="num">2</span> / (<span class="num">2</span> * total)
+    margin = z * np.sqrt(phat * (<span class="num">1</span> - phat) / total + z**<span class="num">2</span> / (<span class="num">4</span> * total**<span class="num">2</span>))
+    <span class="kw">return</span> (center - margin) / denominator</pre>
+
+      <div class="chart-wrap">
+        <img src="outputs/wilson_ranking_sistemas.png" alt="Ranking por Wilson Lower Bound" />
+        <div class="chart-caption">
+          <strong>Fig. 3</strong> — Ranking de sistemas usando Wilson Lower Bound (conservador). Sistemas com alto volume e boa taxa ficam no topo; sistemas com poucas amostras são penalizados.
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ranking</th>
+              <th>Exemplo de Cenário</th>
+              <th>Taxa Simples</th>
+              <th>Wilson LB (95%)</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-gold">🥇 1º</span></td>
+              <td>Sistema A — 5 entregues em 5</td>
+              <td>100%</td>
+              <td>≈ 47%</td>
+              <td><span class="badge badge-red">Penalizado</span></td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">🥈 2º</span></td>
+              <td>Sistema B — 800 em 1.000</td>
+              <td>80%</td>
+              <td>≈ 77%</td>
+              <td><span class="badge badge-green">Promovido</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout purple">
+        <span class="callout-icon">🧠</span>
+        <p><strong>Por que Wilson LB é matematicamente superior?</strong> Com amostras pequenas, a taxa simples é altamente instável. Wilson LB incorpora a incerteza estatística — quem tem mais volume <em>prova</em> sua confiabilidade. Isso elimina o viés de seleção identificado na Parte 1.</p>
+      </div>
+    </div>
+
+    <!-- PONTO 4 -->
+    <div class="card" id="ponto4">
+      <div class="card-title">Ponto 4 · Algoritmo de Escolha</div>
+      <h3>Score Composto 0–1 por Telefone</h3>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+        Três dimensões são combinadas em um score único. A função <code>calcular_score_telefone()</code>
+        está em <code>src/scoring.py</code> — isolada para reuso em produção.
+      </p>
+
+      <div class="formula-box">
+        <div class="formula">score = 0.50 × score_sistema + 0.40 × e<sup>−dias/365</sup> + 0.10 × score_ddd</div>
+        <div class="formula-label">pesos derivados da correlação de cada variável com a flag de entrega</div>
+      </div>
+
+      <div class="weight-bar-wrap">
+        <div class="weight-item">
+          <span class="weight-label">🏢 Sistema de Origem</span>
+          <div class="weight-track"><div class="weight-fill fill-green" style="width:50%"></div></div>
+          <span class="weight-pct" style="color:#3fb950">50%</span>
+        </div>
+        <div class="weight-item">
+          <span class="weight-label">🕒 Frescor Temporal</span>
+          <div class="weight-track"><div class="weight-fill fill-blue" style="width:40%"></div></div>
+          <span class="weight-pct" style="color:#58a6ff">40%</span>
+        </div>
+        <div class="weight-item">
+          <span class="weight-label">📍 DDD Preferencial</span>
+          <div class="weight-track"><div class="weight-fill fill-purple" style="width:10%"></div></div>
+          <span class="weight-pct" style="color:#bc8cff">10%</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Componente</th><th>Peso</th><th>Fonte</th><th>Lógica</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Score do Sistema</strong></td>
+              <td><span class="badge badge-green">50%</span></td>
+              <td><code>id_sistema_mask</code></td>
+              <td>Wilson LB normalizado (0–1) via dict de lookup</td>
+            </tr>
+            <tr>
+              <td><strong>Frescor Temporal</strong></td>
+              <td><span class="badge badge-blue">40%</span></td>
+              <td><code>registro_data_atualizacao</code></td>
+              <td><code>exp(−dias/365)</code> — meia-vida de 1 ano</td>
+            </tr>
+            <tr>
+              <td><strong>DDD Local</strong></td>
+              <td><span class="badge badge-purple">10%</span></td>
+              <td><code>telefone_ddd</code></td>
+              <td><code>1.0</code> se DDD == "21" · <code>0.7</code> caso contrário</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <pre><span class="kw">def</span> <span class="fn">calcular_score_telefone</span>(row, sistema_scores, hoje=pd.Timestamp.today()):
+    <span class="cm"># 1. Qualidade da fonte (Wilson LB normalizado)</span>
+    score_sistema = sistema_scores.get(row[<span class="str">'id_sistema'</span>], <span class="num">0.0</span>)
+
+    <span class="cm"># 2. Frescor — decai exponencialmente (meia-vida ~1 ano)</span>
+    dias = (hoje - pd.to_datetime(row[<span class="str">'registro_data_atualizacao'</span>])).days
+    score_frescor = np.exp(-max(<span class="num">0</span>, dias) / <span class="num">365</span>)
+
+    <span class="cm"># 3. DDD preferencial (Rio = 21)</span>
+    score_ddd = <span class="num">1.0</span> <span class="kw">if</span> str(row[<span class="str">'telefone_ddd'</span>]) == <span class="str">'21'</span> <span class="kw">else</span> <span class="num">0.7</span>
+
+    <span class="kw">return</span> <span class="num">0.50</span> * score_sistema + <span class="num">0.40</span> * score_frescor + <span class="num">0.10</span> * score_ddd
+
+
+<span class="cm"># Selecionar os 2 melhores por cidadão</span>
+top2 = (
+    df_telefones
+    .sort_values(<span class="str">'score'</span>, ascending=<span class="kw">False</span>)
+    .groupby(<span class="str">'id_cidadao_mask'</span>)
+    .head(<span class="num">2</span>)
+    .reset_index(drop=<span class="kw">True</span>)
+)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── PARTE 3 ──────────────── -->
+<section class="section" id="parte3">
+  <div class="container">
+    <div class="section-label">
+      <span class="section-num num-purple">Parte 3</span>
+      <span class="section-part">Desenho de Experimento</span>
+    </div>
+    <h2>Proposta de Teste A/B</h2>
+    <p class="section-lead">
+      Como validar que o novo ranking é realmente melhor que a estratégia atual (aleatória ou alfabética)?
+      O experimento está desenhado para ser executável com os dados reais de produção.
+    </p>
+
+    <!-- PONTO 5 -->
+    <div class="card" id="ponto5">
+      <div class="card-title">Ponto 5 · Estrutura do Experimento A/B</div>
+
+      <div class="ab-layout">
+        <div class="ab-group control">
+          <div class="ab-label">Grupo de Controle</div>
+          <div class="ab-name" style="color:var(--text-muted)">A</div>
+          <div class="ab-desc">Estratégia atual<br />(aleatória / alfabética) · 50% cidadãos</div>
+        </div>
+        <div class="ab-group treatment">
+          <div class="ab-label">Grupo de Tratamento</div>
+          <div class="ab-name" style="color:#3fb950">B</div>
+          <div class="ab-desc">Algoritmo de score proposto · 50% cidadãos</div>
+        </div>
+      </div>
+
+      <div class="hypothesis-row">
+        <div class="hypothesis">
+          <div class="h-label">H₀ — Hipótese Nula</div>
+          <div class="h-text">taxa_B == taxa_A<br /><span style="color:var(--text-muted);font-size:12px">O algoritmo NÃO melhora a entrega</span></div>
+        </div>
+        <div class="hypothesis">
+          <div class="h-label">H₁ — Hipótese Alternativa (unicaudal)</div>
+          <div class="h-text">taxa_B &gt; taxa_A<br /><span style="color:var(--text-muted);font-size:12px">O algoritmo MELHORA a taxa de entrega</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <div class="card-title">Métricas do Experimento</div>
+        <div class="metric-row">
+          <span class="metric-icon">🎯</span>
+          <div class="metric-info">
+            <div class="metric-name">Taxa de Entrega</div>
+            <div class="metric-desc"><code>DELIVERED / total_disparos</code> — principal indicador de sucesso do algoritmo</div>
+          </div>
+          <span class="metric-type" style="color:#3fb950">Primária</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-icon">👁️</span>
+          <div class="metric-info">
+            <div class="metric-name">Taxa de Leitura / Abertura</div>
+            <div class="metric-desc">Se disponível via webhook do WhatsApp Business API</div>
+          </div>
+          <span class="metric-type" style="color:#58a6ff">Secundária</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-icon">💰</span>
+          <div class="metric-info">
+            <div class="metric-name">Custo por Mensagem Entregue</div>
+            <div class="metric-desc">Redução de custo por disparo bem-sucedido</div>
+          </div>
+          <span class="metric-type" style="color:#58a6ff">Secundária</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-icon">🗑️</span>
+          <div class="metric-info">
+            <div class="metric-name">% Disparos Desperdiçados</div>
+            <div class="metric-desc">Casos em que falhou E não havia outro número válido disponível</div>
+          </div>
+          <span class="metric-type" style="color:#58a6ff">Secundária</span>
+        </div>
+      </div>
+
+      <div class="card-title" style="margin-top:24px">Cálculo de Tamanho de Amostra</div>
+
+      <pre><span class="kw">from</span> scipy.stats <span class="kw">import</span> norm
+
+<span class="kw">def</span> <span class="fn">calcular_tamanho_amostra</span>(taxa_base, delta, alpha=<span class="num">0.05</span>, poder=<span class="num">0.80</span>):
+    <span class="cm">"""n mínimo por grupo para detectar melhoria de 'delta' pontos percentuais."""</span>
+    z_alpha = norm.ppf(<span class="num">1</span> - alpha)          <span class="cm"># unicaudal → z ≈ 1.645</span>
+    z_beta  = norm.ppf(poder)               <span class="cm"># poder 80% → z ≈ 0.842</span>
+    p_bar   = taxa_base + delta / <span class="num">2</span>
+    n = (z_alpha + z_beta)**<span class="num">2</span> * <span class="num">2</span> * p_bar * (<span class="num">1</span> - p_bar) / delta**<span class="num">2</span>
+    <span class="kw">return</span> int(np.ceil(n))
+
+<span class="cm"># Parâmetros: detectar +3 p.p. com α=5% e poder=80%</span>
+n_por_grupo = calcular_tamanho_amostra(taxa_base=<span class="num">0.30</span>, delta=<span class="num">0.03</span>)
+<span class="cm"># Duração ≈ (n_por_grupo × 2) / volume_diario_de_disparos</span></pre>
+
+      <div class="card-title" style="margin-top:24px">Análise Pós-Experimento</div>
+
+      <pre><span class="kw">from</span> scipy.stats <span class="kw">import</span> proportions_ztest
+
+<span class="kw">def</span> <span class="fn">analisar_ab_test</span>(entregues_A, total_A, entregues_B, total_B, alpha=<span class="num">0.05</span>):
+    taxa_A = entregues_A / total_A
+    taxa_B = entregues_B / total_B
+    lift   = (taxa_B - taxa_A) / taxa_A
+
+    counts = np.array([entregues_B, entregues_A])
+    nobs   = np.array([total_B, total_A])
+    z_stat, p_valor = proportions_ztest(counts, nobs, alternative=<span class="str">'larger'</span>)
+
+    <span class="kw">if</span> p_valor < alpha:
+        print(<span class="str">f"✅ SIGNIFICATIVO — rejeitar H₀. Lift: {lift:+.1%}. Implantar."</span>)
+    <span class="kw">else</span>:
+        print(<span class="str">f"❌ NÃO significativo — coletar mais dados ou revisar."</span>)</pre>
+
+      <div class="callout green">
+        <span class="callout-icon">📏</span>
+        <p><strong>Parâmetros do experimento:</strong> α = 5% · poder = 80% · delta mínimo detectável = +3 p.p.
+        A duração estimada depende do volume diário real de disparos — calculada automaticamente pelo notebook.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── AVALIAÇÃO ──────────────── -->
+<section class="section" id="avaliacao">
+  <div class="container">
+    <div class="section-label">
+      <span class="section-num num-gold" style="color:var(--gold);border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.08);">Avaliação</span>
+      <span class="section-part">Critérios vs. Solução</span>
+    </div>
+    <h2>Como Cada Critério foi Respondido</h2>
+    <p class="section-lead">Mapeamento direto dos 4 critérios do desafio para a implementação entregue.</p>
+
+    <div class="eval-grid">
+      <div class="eval-card">
+        <div class="eval-icon">🐍</div>
+        <div class="eval-title">Manipulação de Dados</div>
+        <div class="eval-text">Join entre tabelas, <code>groupby</code> com múltiplas agregações, <code>pd.cut</code> para bins, <code>apply</code> com lógica customizada, <code>groupby().head(2)</code> para seleção Top-N.</div>
+      </div>
+      <div class="eval-card">
+        <div class="eval-icon">📐</div>
+        <div class="eval-title">Raciocínio Analítico</div>
+        <div class="eval-text">Wilson Lower Bound para correção de viés de volume. Decaimento exponencial. Teste z para proporções. Viés de seleção identificado e discutido explicitamente.</div>
+      </div>
+      <div class="eval-card">
+        <div class="eval-icon">💼</div>
+        <div class="eval-title">Visão de Negócio</div>
+        <div class="eval-text">Algoritmo pronto para produção em <code>src/scoring.py</code>. Pesos justificados por correlação com dados. Regra de seleção Top-2 acionável pelo motor de disparos.</div>
+      </div>
+      <div class="eval-card">
+        <div class="eval-icon">📊</div>
+        <div class="eval-title">Comunicação e Visualização</div>
+        <div class="eval-text">3 gráficos exportados em alta resolução. Notebooks documentados em português. README com contexto, premissas, instruções de reprodução e checklist.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Entregável do Desafio</th><th>Onde está</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Análise comparativa de taxas por sistema</td>
+            <td><code>notebooks/01_eda_qualidade.ipynb</code> · <code>outputs/taxa_entrega_sistema.png</code></td>
+            <td><span class="badge badge-green">✅ Entregue</span></td>
+          </tr>
+          <tr>
+            <td>Análise de decaimento temporal</td>
+            <td><code>notebooks/01_eda_qualidade.ipynb</code> · <code>outputs/decaimento_temporal.png</code></td>
+            <td><span class="badge badge-green">✅ Entregue</span></td>
+          </tr>
+          <tr>
+            <td>Ranking de confiabilidade dos sistemas</td>
+            <td><code>notebooks/02_priorizacao.ipynb</code> · <code>outputs/wilson_ranking_sistemas.png</code></td>
+            <td><span class="badge badge-green">✅ Entregue</span></td>
+          </tr>
+          <tr>
+            <td>Algoritmo de score composto (Top-2)</td>
+            <td><code>src/scoring.py</code> · <code>notebooks/02_priorizacao.ipynb</code></td>
+            <td><span class="badge badge-green">✅ Entregue</span></td>
+          </tr>
+          <tr>
+            <td>Desenho do experimento A/B</td>
+            <td><code>notebooks/03_experimento_ab.ipynb</code></td>
+            <td><span class="badge badge-green">✅ Entregue</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────── FOOTER ──────────────── -->
+<footer class="footer">
+  <div class="container">
+    <p style="margin-bottom:6px">
+      <strong style="color:var(--text-muted)">Inteligência de Escolha WhatsApp</strong> · Prefeitura do Rio de Janeiro
+    </p>
+    <p>Desafio Técnico — Cientista de Dados Pleno · Squad WhatsApp · 2026</p>
+  </div>
+</footer>
+
+</body>
+</html>
