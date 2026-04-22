@@ -40,7 +40,7 @@ def calcular_score_telefone(
         hoje = pd.Timestamp.now()
 
     # 1. Score do Sistema (Qualidade da fonte)
-    score_sistema = sistema_scores.get(row["id_sistema_mask"], 0.0)
+    score_sistema = sistema_scores.get(row.get("id_sistema", ""), 0.0)
 
     # 2. Score de Frescor (Decai exponencialmente com o tempo)
     data_atualizacao = pd.to_datetime(row["registro_data_atualizacao"])
@@ -49,7 +49,7 @@ def calcular_score_telefone(
     score_frescor = np.exp(-max(0, dias) / 365)
 
     # 3. Score de DDD (Preferência local)
-    ddd = str(row.get("ddd", ""))
+    ddd = str(row.get("telefone_ddd", ""))
     score_ddd = 1.0 if ddd == ddd_preferencial else 0.7
 
     # Cálculo final ponderado
