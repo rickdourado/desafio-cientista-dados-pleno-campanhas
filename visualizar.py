@@ -115,13 +115,13 @@ with tab1:
     
     with c1:
         st.markdown("<div class='brutalist-card'><h3>📱 TELEFONES ENRIQUECIDOS</h3><p>Visão expandida da tabela dimensão.</p></div>", unsafe_allow_html=True)
-        df_telefones = load_data(DATA_DIR / "dim_telefone_mascarado_public")
+        df_telefones = load_data(DATA_DIR / "whatsapp_dim_telefone_mascarado")
         if not df_telefones.empty:
             st.dataframe(df_telefones, use_container_width=True)
             
     with c2:
         st.markdown("<div class='brutalist-card'><h3>📩 HISTÓRICO DE DISPAROS</h3><p>Log bruto do integrador WABA.</p></div>", unsafe_allow_html=True)
-        df_disparos = load_data(DATA_DIR / "base_disparo_mascarado_public")
+        df_disparos = load_data(DATA_DIR / "base_disparo_mascarado")
         if not df_disparos.empty:
             st.dataframe(df_disparos, use_container_width=True)
 
